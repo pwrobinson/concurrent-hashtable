@@ -1,0 +1,65 @@
+name:                concurrent-hashtable
+version:             0.1.0
+github:              "pwrobinson/concurrent-hashtable"
+license:             BSD3
+author:              "Peter Robinson"
+maintainer:          "pwr@lowerbound.io"
+copyright:           "2019 Peter Robinson"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            Thread-safe hash tables for multi-cores!
+category:            Concurrency
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- stm >= 2.4.5.1 && < 3
+- random >= 1.1 && < 2
+- vector >= 0.12.0.3 && < 1
+- containers >= 0.6.0.1 && <1
+- hashable >= 1.2.7.0 && <2
+- atomic-primops >= 0.8.3 && < 2
+- async  >= 2.2.2 && < 3
+
+
+library:
+  source-dirs: src
+
+benchmarks:
+  mainbench:
+    source-dirs: benchmark
+    main: Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -eventlog
+    - -O2
+    dependencies:
+    - concurrent-hashtable
+    - dictionary-type   # internal library used for benchmark
+    - async  >= 2.2.2 && < 3
+    - containers >= 0.6.0.1 && <1
+    - criterion >= 1.5.6.0 && <2
+    - unordered-containers >= 0.2.10.0 && < 1
+
+tests:
+  concurrent-hashtable-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -O
+    - -with-rtsopts=-N
+    dependencies:
+    - concurrent-hashtable
+    - dictionary-type   # internal library used for generating tests
+    - QuickCheck >= 2.13.2 && <3
