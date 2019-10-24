@@ -4,11 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4760a4dc5f17766cbab9df567891393834661e328af58e4d48f66a25419138c8
+-- hash: 78f9515a9c177005d84da896dd98873b546a598fe187373ade31582548b05601
 
 name:           concurrent-hashtable
 version:        0.1.0
-synopsis:       Thread-safe hash tables for multicores!
+synopsis:       Thread-safe hash tables for multi-cores!
 description:    Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>
 category:       Concurrency
 homepage:       https://github.com/pwrobinson/concurrent-hashtable#readme

@@ -44,6 +44,7 @@ import qualified Data.HashTable as H
 import qualified Data.IntMap.Strict as M
 import qualified Data.HashMap.Strict as UO
 
+-- Dictionary data type instances for all the test containers:
 
 newtype MVarHashMap a = MVarHashMap (MVar (UO.HashMap Int a))
 instance Dictionary (MVarHashMap Int) Int IO where
@@ -143,16 +144,16 @@ main = do
     mThreshold <- lookupEnv "threshold"
     mResizers <- lookupEnv "numresizers"
     let expon = case mExpon of Just e -> read e
-                               Nothing -> 5             -- ^ total number of requests
+                               Nothing -> 5 -- ^ total number of requests
     let numRequests = 10^expon
     let range = (1,10^(case mRange of Just r -> read r
                                       Nothing -> expon `div` 2))  -- ^ range for keys
     let numThreads = case mThreads of Just t -> read t
                                       Nothing -> 4      -- ^ the number of requests lists we split the list into
     let threshold = case mThreshold of Just t -> read t
-                                       Nothing -> 0.75 -- ^ threshold on linked list length for resizing
+                                       Nothing -> 0.75 -- ^ threshold on load for resizing
     let numResizers = case mResizers of Just t -> read t
-                                        Nothing -> 8 -- ^ threshold on linked list length for resizing
+                                        Nothing -> 8 -- ^ number of worker threads for resizing
     print "Parameters: "
     putStrLn $ "number of spawned threads: " ++ show numThreads
     putStrLn $ "number of requests: " ++ show numRequests
@@ -199,7 +200,7 @@ runBench numThreads numRequests range threshold = do
             return $! filter (==True) $ concat res
 
 
-       -- Generate set of tests for different workloads
+   -- Generate set of tests for different workloads
     !tests_90_5_5 <- replicateM numThreads $ genTests (0.9,0.05) range
     !tests_80_10_10 <- replicateM numThreads $ genTests (0.8,0.1) range
     !tests_70_15_15 <- replicateM numThreads $ genTests (0.7,0.15) range
