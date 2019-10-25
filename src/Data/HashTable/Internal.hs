@@ -154,7 +154,6 @@ resize ht = do
         debug "woke up blocked threads..."
     where
         migrate newVec newSize chain = do
-            let idx = 0
             -- debug ("starting to copy nodes of list # ",idx)
             atomically $ writeTVar (_migrationStatusTV chain) Ongoing
             -- debug ("updated list status # ",idx)
