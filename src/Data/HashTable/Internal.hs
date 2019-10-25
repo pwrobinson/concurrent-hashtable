@@ -106,6 +106,7 @@ readSizeIO :: HashTable k v -> IO Int
 readSizeIO ht = do
     V.length <$> readTVarIO (_chainsVecTV ht)
 
+-- | Returns the size of the vector representing the hash table.
 {-# INLINABLE readSize #-}
 readSize :: HashTable k v -> STM Int
 readSize ht = do
@@ -275,7 +276,7 @@ atomicallyChangeLoad htable incr = do
 readLoad :: HashTable k v -> IO Int
 readLoad htable = readIORef (_totalLoad htable)
 
--- Atomically retrieves list of key-value pairs. If there is a lot of contention going on, this may be very inefficient.
+-- | Atomically retrieves list of key-value pairs. If there is a lot of contention going on, this may be very inefficient.
 readAssocs :: (Eq k)
             => HashTable k v -> STM [(k,v)]
 readAssocs htable = do
