@@ -172,7 +172,7 @@ resize ht = do
                       | (k,v) <- listOfNodes ]
             -- debug ("finished migrate for list ",idx)
 
--- | Lookup the value for a key in the hash table.
+-- | Lookup the value for the key in the hash table if it exists.
 {-# INLINABLE lookup #-}
 lookup :: (Eq k) => HashTable k v -> k -> IO (Maybe v)
 lookup htable k = do
@@ -247,7 +247,7 @@ insertIfNotExists htable k v = do
     else
         return False
 
--- Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
+-- | Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
 delete :: (Eq k)
        => HashTable k v
        -> k -- ^ key of entry that will be deleted
@@ -299,28 +299,16 @@ deleteFirstKey ::  Eq a => a -> [(a,b)] -> [(a,b)]
 deleteFirstKey _ []     = []
 deleteFirstKey x (y:ys) = if x == fst y then ys else y : deleteFirstKey x ys
 
+-- | Read the chain for the given key.
 {-# INLINABLE readChainForKeyIO #-}
--- | Get the chain for the given key.
 readChainForKeyIO :: HashTable k v -> k -> IO (Chain k v)
 readChainForKeyIO htable k = do
-    size1 <- readSizeIO htable
-    let index = (_hashFunc (_config htable) k) `mod` size1
-    chain <- readChainForIndexIO htable index
-    size2 <- readSizeIO htable
-    if size1 /= size2 then
-        readChainForKeyIO htable k
-    else
-        return chain
+    chainsVec <- readTVarIO $ _chainsVecTV htable
+    let size = V.length chainsVec
+    let index = (_hashFunc (_config htable) k) `mod` size
+    return $ chainsVec ! index
 
-{-# INLINABLE readChainForKey #-}
--- | Get the chain for the given key.
-readChainForKey :: HashTable k v -> k -> STM (Chain k v)
-readChainForKey htable k = do
-    size1 <- readSize htable
-    let index = (_hashFunc (_config htable) k) `mod` size1
-    readChainForIndex htable index
-
--- | Get the chain for the given index (warning: bounds are not checked)
+-- | Read the chain for the given index (warning: bounds are not checked)
 {-# INLINABLE readChainForIndexIO #-}
 readChainForIndexIO :: HashTable k v -> Int -> IO (Chain k v)
 readChainForIndexIO htable idx = do

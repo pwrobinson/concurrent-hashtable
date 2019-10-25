@@ -270,8 +270,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_0_50_50)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_0_50_50)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_0_50_50)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_0_50_50)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_0_50_50)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_0_50_50)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_0_50_50)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_0_50_50)
             ]
         , bgroup "20% Lookups; 40% Inserts; 40% Deletes"
@@ -279,8 +279,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_20_40_40)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_20_40_40)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_20_40_40)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_20_40_40)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_20_40_40)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_20_40_40)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_20_40_40)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_20_40_40)
             ]
         , bgroup "40% Lookups; 30% Inserts; 30% Deletes"
@@ -288,8 +288,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_40_30_30)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_40_30_30)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_40_30_30)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_40_30_30)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_40_30_30)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_40_30_30)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_40_30_30)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_40_30_30)
             ]
         , bgroup "50% Lookups; 25% Inserts; 25% Deletes"
@@ -297,8 +297,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_50_25_25)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_50_25_25)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_50_25_25)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_50_25_25)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_50_25_25)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_50_25_25)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_50_25_25)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_50_25_25)
             ]
         ,  bgroup "60% Lookups; 20% Inserts; 20% Deletes"
@@ -306,8 +306,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_60_20_20)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_60_20_20)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_60_20_20)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_60_20_20)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_60_20_20)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_60_20_20)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_60_20_20)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_60_20_20)
             ]
          , bgroup "70% Lookups; 15% Inserts; 15% Deletes"
@@ -315,8 +315,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_70_15_15)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_70_15_15)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_70_15_15)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_70_15_15)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_70_15_15)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_70_15_15)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_70_15_15)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_70_15_15)
             ]
         , bgroup "80% Lookups; 10% Inserts; 10% Deletes"
@@ -324,8 +324,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_80_10_10)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_80_10_10)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_80_10_10)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_80_10_10)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_80_10_10)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_80_10_10)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_80_10_10)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_80_10_10)
             ]
         , bgroup "90% Lookups; 5% Inserts; 5% Deletes"
@@ -333,8 +333,8 @@ runBench numThreads numRequests range threshold = do
             bench "IORef atomicModifyIORef HashMap" $ nfIO (mkIORefMap >>= evaluate tests_90_5_5)
             , bench "IORef atomic-primops IntMap" $ nfIO (mkIOPrimOpsMap >>= evaluate tests_90_5_5)
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_90_5_5)
-            , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_90_5_5)
-            , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_90_5_5)
+            -- , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_90_5_5)
+            -- , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_90_5_5)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_90_5_5)
             ]
         ]
