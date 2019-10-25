@@ -11,7 +11,7 @@
 -- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 --
 -- List of atomic operations:
--- /insert/, /insertIfNotExists/, /lookup/, /delete/, /getAssocs/, /resize/
+-- /insert/, /insertIfNotExists/, /lookup/, /delete/, /readAssocs/, /resize/
 ----------------------------------------------------------------------
 {-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 module Data.HashTable.Internal
@@ -38,7 +38,7 @@ data MigrationStatus = NotStarted | Ongoing | Finished
 
 -- | Used for chain-hashing.
 data Chain k v = Chain
-    { _itemsTV           :: TVar [(k,v)]   -- ^ stores the
+    { _itemsTV           :: TVar [(k,v)]   -- ^ stores the items for this index
     , _migrationStatusTV :: TVar MigrationStatus -- ^ used internally for resizing
     }
     deriving (Eq)
@@ -104,9 +104,12 @@ newWithDefaults size = mkDefaultConfig >>= new size
 {-# INLINABLE readSizeIO #-}
 readSizeIO :: HashTable k v -> IO Int
 readSizeIO ht = do
-    chainsVec <- readTVarIO $ _chainsVecTV ht
-    return $ V.length chainsVec
+    V.length <$> readTVarIO (_chainsVecTV ht)
 
+{-# INLINABLE readSize #-}
+readSize :: HashTable k v -> STM Int
+readSize ht = do
+    V.length <$> readTVar (_chainsVecTV ht)
 
 -- | Resizes the hash table by scaling it according to the _scaleFactor in the configuration.
 resize :: (Eq k)
@@ -163,7 +166,7 @@ resize ht = do
                                writeTVar (_itemsTV newChain) ((k,v):newList)
                       | (k,v) <- listOfNodes ]
 
-                      
+
 -- | Lookup the value for the key in the hash table if it exists.
 {-# INLINABLE lookup #-}
 lookup :: (Eq k) => HashTable k v -> k -> IO (Maybe v)
@@ -268,16 +271,21 @@ atomicallyChangeLoad htable incr = do
         when (migrationStatus == NotStarted) $
             void $ forkIO (resize htable)
 
+-- | The load (i.e. number of stored items) in the table. Note that this is not synchronized for performance reasons and hence might be somewhat out of date if a lot of contention is happening.
+readLoad :: HashTable k v -> IO Int
+readLoad htable = readIORef (_totalLoad htable)
+
 -- Atomically retrieves list of key-value pairs. If there is a lot of contention going on, this may be very inefficient.
-getAssocs :: (Eq k)
+readAssocs :: (Eq k)
             => HashTable k v -> STM [(k,v)]
-getAssocs htable = do
+readAssocs htable = do
     chainsVec <- readTVar $ _chainsVecTV htable
     let len = V.length chainsVec
     let getItemsForChain k = do
             chain <- readChainForIndex htable k
             readTVar (_itemsTV chain)
     msum <$> mapM getItemsForChain [0..len-1]
+
 
 {-# INLINABLE deleteFirstKey #-}
 deleteFirstKey ::  Eq a => a -> [(a,b)] -> [(a,b)]
