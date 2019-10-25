@@ -7,6 +7,8 @@
 -- Maintainer  :  Peter Robinson <pwr@lowerbound.io>
 -- Stability   :  provisional
 -- Portability :  non-portable (requires concurrency, stm)
+--
+-- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 ----------------------------------------------------------------------
 {-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 module Data.HashTable.Internal
@@ -43,7 +45,7 @@ newChainIO =
     Chain <$> newTVarIO []
           <*> newTVarIO NotStarted
 
--- | A thread-safe hash table that supports dynamic resizing. See the package docs for more details.
+-- | A thread-safe hash table that supports dynamic resizing.
 data HashTable k v = HashTable
     { _chainsVecTV       :: TVar (Vector (Chain k v)) -- ^ vector of linked lists
     , _totalLoad        :: IORef Int

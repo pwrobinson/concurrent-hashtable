@@ -7,6 +7,8 @@
 -- Maintainer  :  Peter Robinson <pwr@lowerbound.io>
 -- Stability   :  provisional
 -- Portability :  non-portable (requires concurrency, stm)
+--
+-- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 ----------------------------------------------------------------------
 
 module Data.HashTable(
