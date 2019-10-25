@@ -8,8 +8,7 @@ import Data.Maybe
 import qualified Data.Map.Strict as M
 import Test.QuickCheck         as QC
 import Test.QuickCheck.Monadic as QC
-import Prelude hiding (lookup,elems)
-import System.IO
+import Prelude hiding (lookup)
 import qualified Data.Set as Set
 
 import qualified Data.HashTable as H
@@ -17,7 +16,6 @@ import Control.Concurrent.STM
 import Data.Hashable
 import Data.Dictionary
 import Data.Dictionary.Request
-import qualified Data.Vector as V
 
 hasDuplicates :: (Ord a) => [a] -> Bool
 hasDuplicates list = length list /= length set
@@ -77,25 +75,18 @@ instance Dictionary TestChainHashTable BoundedInt IO where
     runRequest (Update k a) s = H.insert s k a
     runRequest (Delete k) s = H.delete s k
 
-instance (QC.Arbitrary k) => QC.Arbitrary (Request k) where
-    arbitrary = QC.oneof
-        [ Insert <$> QC.arbitrary <*> QC.arbitrary
-        , Lookup <$> QC.arbitrary
-        , Delete <$> QC.arbitrary
-        ]
 
 prop :: IORef TestMap -> TestChainHashTable -> Property
 prop ioref chainTable = monadicIO $ do
     (r :: Request BoundedInt) <- pick arbitrary
     run $ appendFile "request_sequence.txt" (show r ++ "\n")
-    run $ runRequest r ioref
-    run $ runRequest r chainTable
+    run $ void (runRequest r ioref >> runRequest r chainTable)
 
     mapAssocs <- run ( M.assocs <$> readIORef ioref)
     -- test if all entries in the Map are also in the Hash Table:
     resChain <- run $ sequence
-                    [ do r <-  H.lookup chainTable k
-                         return $ (isJust r) && (fromJust r == a)
+                    [ do res <-  H.lookup chainTable k
+                         return $ (isJust res) && (fromJust res == a)
                     | (k,a) <- mapAssocs ]
     list2 <- run $ atomically $ H.getAssocs chainTable
     -- test if there aren't any duplicates in the Hash Table:

@@ -24,7 +24,7 @@ packages:
 extra-deps:
     # this is used for benchmarking and testing. Stack doesn't seem to support internal libraries; once it does we can make this one.
   - git: https://github.com/pwrobinson/dictionary-type.git
-    commit: cf6568fd7f402732c5b4b8263e97d8896bef1dbc
+    commit: 428b0ff170f1c850a6bfae3c777e9348b575d0da
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

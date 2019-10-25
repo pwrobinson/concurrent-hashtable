@@ -9,6 +9,9 @@
 -- Portability :  non-portable (requires concurrency, stm)
 --
 -- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
+--
+-- List of atomic operations:
+-- /insert/, /insertIfNotExists/, /lookup/, /delete/, /getAssocs/, /resize/
 ----------------------------------------------------------------------
 {-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 module Data.HashTable.Internal
@@ -23,7 +26,6 @@ import Control.Exception
 import Control.Monad
 import Data.Hashable
 import System.Random
-import System.IO.Unsafe
 import Data.Maybe
 import qualified Data.List as L
 import Data.Vector(Vector,(!))
@@ -41,6 +43,7 @@ data Chain k v = Chain
     }
     deriving (Eq)
 
+newChainIO :: IO (Chain k v)
 newChainIO =
     Chain <$> newTVarIO []
           <*> newTVarIO NotStarted
@@ -104,14 +107,8 @@ readSizeIO ht = do
     chainsVec <- readTVarIO $ _chainsVecTV ht
     return $ V.length chainsVec
 
--- | Returns the size of the vector representing the hash table.
-{-# INLINABLE readSize #-}
-readSize :: HashTable k v -> STM Int
-readSize ht = do
-    chainsVec <- readTVar $ _chainsVecTV ht
-    return $ V.length chainsVec
--- | Resizes the hash table by scaling it according to the _scaleFactor in the configuration.
 
+-- | Resizes the hash table by scaling it according to the _scaleFactor in the configuration.
 resize :: (Eq k)
        => HashTable k v -> IO ()
 resize ht = do
@@ -128,7 +125,6 @@ resize ht = do
         size2 <- readSizeIO ht
         return (hasStarted || (size1 /= size2))
     unless alreadyResizing $ do
-        let lists = V.toList chainsVec
         let oldSize = V.length chainsVec
         let numWorkers = _numResizeWorkers $ _config ht
         let numSlices = min numWorkers (oldSize `div` numWorkers)
@@ -203,7 +199,7 @@ genericModify htable k stmAction = do
         Nothing -> genericModify htable k stmAction
         Just v  -> return v
 
-
+-- | Inserts the key-value pair `k` `v` into the hash table. Uses chain hashing to resolve collisions.
 insert :: (Eq k)
        => HashTable k v
        -> k -- ^ key
@@ -219,12 +215,9 @@ insert htable k v = do
                     Just _  -> do -- entry was already there, so we overwrite it
                         writeTVar tvar ((k,v) : deleteFirstKey k list)
                         return $ Just False
-    if result then do
+    when result $
         atomicallyChangeLoad htable 1
-        return True
-    else
-        return False
-
+    return result
 
 
 -- | Inserts a key and value pair into the hash table only if the key does not exist yet. Returns 'True' if the insertion was successful, i.e., the hash table did not contain this key before. To get the same behaviour as 'Data.Map.insert', use 'insert'. If you want to update an entry only if it exists, use 'update'.
@@ -241,11 +234,9 @@ insertIfNotExists htable k v = do
                         writeTVar tvar ((k,v):list)
                         return $ Just True
                     Just _  -> return $ Just False
-    if result then do
+    when result $
         atomicallyChangeLoad htable 1
-        return True
-    else
-        return False
+    return result
 
 -- | Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
 delete :: (Eq k)
@@ -261,11 +252,9 @@ delete htable k = do
                     Just _  -> do
                         writeTVar tvar $ deleteFirstKey k list
                         return $ Just True
-    if result then do
+    when result $
         atomicallyChangeLoad htable (-1)
-        return True
-    else
-        return False
+    return result
 
 -- | Atomically increment/decrement the table load value by adding the provided integer value to the current value.
 atomicallyChangeLoad :: (Eq k)
@@ -292,14 +281,14 @@ getAssocs htable = do
     let getItemsForChain k = do
             chain <- readChainForIndex htable k
             readTVar (_itemsTV chain)
-    msum <$> mapM getItemsForChain [ k | k <- [0..len-1]]
+    msum <$> mapM getItemsForChain [0..len-1]
 
 {-# INLINABLE deleteFirstKey #-}
 deleteFirstKey ::  Eq a => a -> [(a,b)] -> [(a,b)]
 deleteFirstKey _ []     = []
 deleteFirstKey x (y:ys) = if x == fst y then ys else y : deleteFirstKey x ys
 
--- | Read the chain for the given key.
+-- | Atomically read the chain for the given key.
 {-# INLINABLE readChainForKeyIO #-}
 readChainForKeyIO :: HashTable k v -> k -> IO (Chain k v)
 readChainForKeyIO htable k = do
@@ -308,14 +297,14 @@ readChainForKeyIO htable k = do
     let index = (_hashFunc (_config htable) k) `mod` size
     return $ chainsVec ! index
 
--- | Read the chain for the given index (warning: bounds are not checked)
+-- | Atomically read the chain for the given index. (Warning: bounds are not checked.)
 {-# INLINABLE readChainForIndexIO #-}
 readChainForIndexIO :: HashTable k v -> Int -> IO (Chain k v)
 readChainForIndexIO htable idx = do
     chainsVec <- readTVarIO $ _chainsVecTV htable
     return $ chainsVec ! idx
 
--- | Get the chain for the given index (warning: bounds are not checked)
+-- | Atomically read the chain for the given index. (Warning: bounds are not checked.)
 {-# INLINABLE readChainForIndex #-}
 readChainForIndex :: HashTable k v -> Int -> STM (Chain k v)
 readChainForIndex htable idx = do
@@ -324,7 +313,7 @@ readChainForIndex htable idx = do
 
 {-# INLINABLE debug #-}
 debug :: Show a => a -> IO ()
-debug a = return () {- do
+debug _ = return () {- do
     -- tid <- myThreadId
     -- print a
     -- appendFile ("thread" ++ show tid) (show a) -}
