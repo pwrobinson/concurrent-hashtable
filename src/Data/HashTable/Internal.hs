@@ -154,19 +154,16 @@ resize ht = do
         debug "woke up blocked threads..."
     where
         migrate newVec newSize chain = do
-            -- debug ("starting to copy nodes of list # ",idx)
             atomically $ writeTVar (_migrationStatusTV chain) Ongoing
-            -- debug ("updated list status # ",idx)
             listOfNodes <- readTVarIO (_itemsTV chain)
-            -- debug ("done copying nodes of list # ",idx)
             sequence_ [ do let newIndex = (_hashFunc (_config ht) k) `mod` newSize
                            let newChain = newVec ! newIndex
                            newList <- readTVarIO (_itemsTV newChain)
                            atomically $
                                writeTVar (_itemsTV newChain) ((k,v):newList)
                       | (k,v) <- listOfNodes ]
-            -- debug ("finished migrate for list ",idx)
 
+                      
 -- | Lookup the value for the key in the hash table if it exists.
 {-# INLINABLE lookup #-}
 lookup :: (Eq k) => HashTable k v -> k -> IO (Maybe v)
