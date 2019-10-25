@@ -88,7 +88,7 @@ prop ioref chainTable = monadicIO $ do
                     [ do res <-  H.lookup chainTable k
                          return $ (isJust res) && (fromJust res == a)
                     | (k,a) <- mapAssocs ]
-    list2 <- run $ atomically $ H.getAssocs chainTable
+    list2 <- run $ atomically $ H.readAssocs chainTable
     -- test if there aren't any duplicates in the Hash Table:
     let res2 = (not . hasDuplicates) list2
     mymap <- run $ readIORef ioref
@@ -106,4 +106,4 @@ main = do
     print "------- Map ASSOCS List ----"
     print =<< (M.assocs <$> readIORef ioref)
     print "--------Hashtable AFTER --------"
-    print =<< atomically (H.getAssocs ctable)
+    print =<< atomically (H.readAssocs ctable)
