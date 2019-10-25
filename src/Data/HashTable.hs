@@ -11,7 +11,7 @@
 -- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 --
 --
--- Example usage:
+-- Usage Example:
 --
 -- >> ht <- newWithDefaults 2     -- creates hash table of initial size 4
 -- >> insert ht 1 "hello"         -- adds key-value pair (1,"hello")
