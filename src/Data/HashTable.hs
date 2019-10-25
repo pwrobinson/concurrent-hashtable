@@ -25,7 +25,7 @@
 -- > [(1,"hello"),(3,"!"),(2,"world")]
 --
 -- List of atomic operations:
--- /insert/, /insertIfNotExists/, /lookup/, /delete/, /getAssocs/, /resize/
+-- 'insert', 'insertIfNotExists', 'update', 'lookup', 'delete', 'readAssocs', 'resize'
 --
 ----------------------------------------------------------------------
 
@@ -39,6 +39,7 @@ module Data.HashTable(
         lookup,
         insert,
         insertIfNotExists,
+        update,
         delete,
         readAssocs,
         readSizeIO,

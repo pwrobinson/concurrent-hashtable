@@ -10,8 +10,6 @@
 --
 -- You can find benchmarks and more information about the internals of this package here:  <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 --
--- List of atomic operations:
--- /insert/, /insertIfNotExists/, /lookup/, /delete/, /readAssocs/, /resize/
 ----------------------------------------------------------------------
 {-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 module Data.HashTable.Internal
@@ -199,7 +197,8 @@ genericModify htable k stmAction = do
         Nothing -> genericModify htable k stmAction
         Just v  -> return v
 
--- | Inserts the key-value pair `k` `v` into the hash table. Uses chain hashing to resolve collisions.
+-- | Inserts the key-value pair `k` `v` into the hash table. Uses chain hashing to resolve collisions. If you want to update the entry only if it already exists, use 'update'. If you want to update the entry only if it does *not* exist, use
+-- 'insertIfNotExists'.
 insert :: (Eq k)
        => HashTable k v
        -> k -- ^ key
@@ -220,7 +219,7 @@ insert htable k v = do
     return result
 
 
--- | Inserts a key and value pair into the hash table only if the key does not exist yet. Returns 'True' if the insertion was successful, i.e., the hash table did not contain this key before. To get the same behaviour as 'Data.Map.insert', use 'insert'. If you want to update an entry only if it exists, use 'update'.
+-- | Inserts a key and value pair into the hash table only if the key does not exist yet. Returns `True` if the insertion was successful, i.e., the hash table did not contain this key before. To get the same behaviour as 'Data.Map.insert', use 'insert'. If you want to update an entry only if it exists, use 'update'.
 insertIfNotExists :: (Eq k)
        => HashTable k v
        -> k -- ^ key
@@ -237,6 +236,23 @@ insertIfNotExists htable k v = do
     when result $
         atomicallyChangeLoad htable 1
     return result
+
+-- | Updates the value for key `k`. If `k` is not in the hash table, it skips the update and returns `False`.
+update :: (Eq k)
+       => HashTable k v
+       -> k -- ^ key
+       -> v -- ^ value
+       -> IO Bool
+update htable k v = 
+    genericModify htable k $ \tvar -> do
+                list <- readTVar tvar
+                case L.lookup k list of
+                    Nothing -> do
+                        return $ Just False
+                    Just _  -> do -- entry was already there, so we overwrite it
+                        writeTVar tvar ((k,v) : deleteFirstKey k list)
+                        return $ Just True
+
 
 -- | Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
 delete :: (Eq k)
