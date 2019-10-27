@@ -68,7 +68,7 @@ instance Show (Config k) where
 
 -- | Default configuration: scale factor = 2.0; resizing threshold = 0.75;
 --   number of worker threads for resizing = 'getNumCapabilities';
---   hash function = use 'hashWithSalt' with a random salt
+--   hash function = use 'hashWithSalt' with a random salt.
 mkDefaultConfig :: Hashable k => IO (Config k)
 mkDefaultConfig = do
     numCPUs <- getNumCapabilities
@@ -98,7 +98,7 @@ newWithDefaults :: (Eq k,Hashable k) => Int -- ^ Initial size of the hash table
                 -> IO (HashTable k v)
 newWithDefaults size = mkDefaultConfig >>= new size
 
--- | Returns the size of the vector representing the hash table.
+-- | Returns the size of the vector representing the hash table. (Atomic)
 {-# INLINABLE readSizeIO #-}
 readSizeIO :: HashTable k v -> IO Int
 readSizeIO ht = do
@@ -175,10 +175,10 @@ lookup htable k = do
     return $ L.lookup k list
 
 
--- | Used internally. An action to be executed atomically for the given chain.
+-- | An action to be executed atomically for the chain (list) stored at a specific table idnex. Used by 'genericModify'.
 type STMAction k v a = TVar [(k,v)] -> STM (Maybe a)
 
--- | Used internally by 'insert', 'insertIfNotExists', 'delete', 'update'
+-- | Used by 'insert', 'insertIfNotExists', 'delete', and 'update'.
 genericModify :: (Eq k)
        => HashTable k v
        -> k -- ^ key
@@ -212,6 +212,7 @@ insert htable k v = do
                         writeTVar tvar ((k,v):list)
                         return $ Just True
                     Just _  -> do -- entry was already there, so we overwrite it
+                        -- Moves the most-recently modified item to the front:
                         writeTVar tvar ((k,v) : deleteFirstKey k list)
                         return $ Just False
     when result $
@@ -243,7 +244,7 @@ update :: (Eq k)
        -> k -- ^ key
        -> v -- ^ value
        -> IO Bool
-update htable k v = 
+update htable k v =
     genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
@@ -253,6 +254,22 @@ update htable k v =
                         writeTVar tvar ((k,v) : deleteFirstKey k list)
                         return $ Just True
 
+
+-- | Applies an update-function to the value for key `k`. If `k` is not in the hash table, it just returns `False`.
+modify :: (Eq k)
+       => HashTable k v
+       -> k        -- ^ key
+       -> (v -> v) -- ^ update-function
+       -> IO Bool
+modify htable k f =
+    genericModify htable k $ \tvar -> do
+                list <- readTVar tvar
+                case L.lookup k list of
+                    Nothing -> do
+                        return $ Just False
+                    Just v -> do -- entry was already there, so we overwrite it
+                        writeTVar tvar ((k,f v) : deleteFirstKey k list)
+                        return $ Just True
 
 -- | Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
 delete :: (Eq k)
@@ -304,10 +321,12 @@ readAssocs htable = do
     msum <$> mapM getItemsForChain [0..len-1]
 
 
+-- | Takes a key `k` and an assocation list `ys`, and deletes the first entry with key `k` in `ys`. Used internally.
 {-# INLINABLE deleteFirstKey #-}
 deleteFirstKey ::  Eq a => a -> [(a,b)] -> [(a,b)]
 deleteFirstKey _ []     = []
 deleteFirstKey x (y:ys) = if x == fst y then ys else y : deleteFirstKey x ys
+
 
 -- | Atomically read the chain for the given key.
 {-# INLINABLE readChainForKeyIO #-}

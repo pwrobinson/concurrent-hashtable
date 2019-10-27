@@ -14,7 +14,8 @@
 --
 -- The above will run all benchmarks with 10^6 requests split among 32 threads
 -- and keys chosen from a range 10^4. You need to change the integer after "-N"
--- according to the number of cores that you have. Saves the results in files -- --- results-32.html and results-32.csv.
+-- according to the number of cores that you have. Saves the results in files
+-- results-32.html and results-32.csv.
 --
 ----------------------------------------------------------------------
 {-# LANGUAGE BangPatterns, ScopedTypeVariables, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, AllowAmbiguousTypes #-}
@@ -43,8 +44,19 @@ import Prelude hiding (lookup)
 import qualified Data.HashTable as H
 import qualified Data.IntMap.Strict as M
 import qualified Data.HashMap.Strict as UO
+import qualified StmContainers.Map as SM
 
 -- Dictionary data type instances for all the test containers:
+
+newtype STMContainersMap a = STMContainersMap (SM.Map Int a)
+instance Dictionary (STMContainersMap Int) Int IO where
+    runRequest (Lookup k) (STMContainersMap m) = do
+        r <- atomically $ SM.lookup k m
+        case r of
+            Nothing -> return False
+            Just _  -> return True
+    runRequest (Insert k a) (STMContainersMap m) = atomically $ SM.insert k a m >> SM.null m
+    runRequest (Delete k) (STMContainersMap m) = atomically $ SM.delete k m >> SM.null m
 
 newtype MVarHashMap a = MVarHashMap (MVar (UO.HashMap Int a))
 instance Dictionary (MVarHashMap Int) Int IO where
@@ -189,6 +201,9 @@ runBench numThreads numRequests range threshold = do
         mkMVarMap =
             MVarHashMap <$> newMVar (UO.empty :: UO.HashMap Int Int)
 
+    let mkSTMMap :: IO (STMContainersMap Int)
+        mkSTMMap = STMContainersMap <$> SM.newIO
+
     numProcs <- getNumCapabilities
     print ("number of available cores: ",numProcs)
     threadDelay 3000000
@@ -272,6 +287,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_0_50_50)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_0_50_50)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_0_50_50)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_0_50_50)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_0_50_50)
             ]
         , bgroup "20% Lookups; 40% Inserts; 40% Deletes"
@@ -281,6 +297,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_20_40_40)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_20_40_40)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_20_40_40)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_20_40_40)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_20_40_40)
             ]
         , bgroup "40% Lookups; 30% Inserts; 30% Deletes"
@@ -290,6 +307,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_40_30_30)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_40_30_30)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_40_30_30)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_40_30_30)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_40_30_30)
             ]
         , bgroup "50% Lookups; 25% Inserts; 25% Deletes"
@@ -299,6 +317,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_50_25_25)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_50_25_25)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_50_25_25)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_50_25_25)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_50_25_25)
             ]
         ,  bgroup "60% Lookups; 20% Inserts; 20% Deletes"
@@ -308,6 +327,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_60_20_20)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_60_20_20)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_60_20_20)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_60_20_20)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_60_20_20)
             ]
          , bgroup "70% Lookups; 15% Inserts; 15% Deletes"
@@ -317,6 +337,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_70_15_15)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_70_15_15)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_70_15_15)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_70_15_15)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_70_15_15)
             ]
         , bgroup "80% Lookups; 10% Inserts; 10% Deletes"
@@ -326,6 +347,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_80_10_10)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_80_10_10)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_80_10_10)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_80_10_10)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_80_10_10)
             ]
         , bgroup "90% Lookups; 5% Inserts; 5% Deletes"
@@ -335,6 +357,7 @@ runBench numThreads numRequests range threshold = do
             , bench "IORef atomic-primops HashMap" $ nfIO (mkIOPrimOpsHashMap >>= evaluate tests_90_5_5)
             , bench "TVar HashMap" $ nfIO (mkTVarMap >>= evaluate tests_90_5_5)
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_90_5_5)
+            , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_90_5_5)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_90_5_5)
             ]
         ]

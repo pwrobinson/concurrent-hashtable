@@ -19,28 +19,33 @@
 -- >> atomically $ readAssocs ht  -- convert to a key-value list
 -- > [(1,"hello"),(2,"world")]
 -- >> readSizeIO ht               -- returns 4
--- >> insert ht 3 "!"             -- adds key-value pair (3,"!") and triggers a resize as the load fraction is ≥ 0.75
+-- >> insert ht 3 "!"             -- adds key-value pair (3,"!") and triggers a resize since load/size is ≥ 0.75
 -- >> readSizeIO ht               -- returns 8
 -- >> atomically $ readAssocs ht  -- convert to a key-value list
 -- > [(1,"hello"),(3,"!"),(2,"world")]
 --
 -- List of atomic operations:
--- 'insert', 'insertIfNotExists', 'update', 'lookup', 'delete', 'readAssocs', 'resize'
+-- 'insert', 'insertIfNotExists', 'update', 'modify', 'lookup', 'delete', 'readAssocs', 'resize'
 --
 ----------------------------------------------------------------------
 
 module Data.HashTable(
+        -- * Data Type
         HashTable,
         Chain,
+        -- * Construction
         new,
         newWithDefaults,
         mkDefaultConfig,
         Config(..),
+        -- * Atomic Operations
         lookup,
         insert,
         insertIfNotExists,
         update,
+        modify,
         delete,
+        -- * Utilities
         readAssocs,
         readSizeIO,
         readSize

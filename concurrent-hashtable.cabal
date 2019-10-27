@@ -4,12 +4,12 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 52facc0875c55e5699c89da7fd34cc82941cf1e89d804012a77d6332ee3e712e
+-- hash: 0e6ba310bf66a8401f71fdaaa4ffa5e4639795300dafe5a4e400ce91834dad4d
 
 name:           concurrent-hashtable
-version:        0.1.6
+version:        0.1.7
 synopsis:       Thread-safe hash tables for multi-cores!
-description:    Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>
+description:    Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>. Benchmarks can be found at <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
 category:       Concurrency
 homepage:       https://github.com/pwrobinson/concurrent-hashtable#readme
 bug-reports:    https://github.com/pwrobinson/concurrent-hashtable/issues
@@ -74,7 +74,7 @@ benchmark mainbench
       Paths_concurrent_hashtable
   hs-source-dirs:
       benchmark
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -eventlog -O2
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
   build-depends:
       async >=2.2.2 && <3
     , atomic-primops >=0.8.3 && <2
@@ -86,6 +86,7 @@ benchmark mainbench
     , hashable >=1.2.7.0 && <2
     , random >=1.1 && <2
     , stm >=2.4.5.1 && <3
+    , stm-containers
     , unordered-containers >=0.2.10.0 && <1
     , vector >=0.12.0.3 && <1
   default-language: Haskell2010

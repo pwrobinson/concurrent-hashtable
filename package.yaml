@@ -1,5 +1,5 @@
 name:                concurrent-hashtable
-version:             0.1.6
+version:             0.1.7
 github:              "pwrobinson/concurrent-hashtable"
 license:             BSD3
 author:              "Peter Robinson"
@@ -13,10 +13,8 @@ extra-source-files:
 synopsis:            Thread-safe hash tables for multi-cores!
 category:            Concurrency
 
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>
+description:         Please see the README on GitHub at <https://github.com/pwrobinson/concurrent-hashtable#readme>. Benchmarks can be found at <https://lowerbound.io/blog/2019-10-24_concurrent_hash_table_performance.html>
+
 
 dependencies:
 - base >= 4.7 && < 5
@@ -39,7 +37,6 @@ benchmarks:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -eventlog
     - -O2
     dependencies:
     - concurrent-hashtable
@@ -48,6 +45,7 @@ benchmarks:
     - containers >= 0.6.0.1 && <1
     - criterion >= 1.5.6.0 && <2
     - unordered-containers >= 0.2.10.0 && < 1
+    - stm-containers
 
 tests:
   concurrent-hashtable-test:
