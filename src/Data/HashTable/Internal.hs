@@ -49,8 +49,8 @@ newChainIO =
 -- | A thread-safe hash table that supports dynamic resizing.
 data HashTable k v = HashTable
     { _chainsVecTV       :: TVar (Vector (Chain k v)) -- ^ vector of linked lists
-    , _totalLoad        :: IORef Int
-    , _config           :: Config k
+    , _totalLoad        :: IORef Int -- ^ the current load of the hash table
+    , _config           :: Config k  -- ^ the configuration options
     }
 
 -- | Configuration options that may affect the performance of the hash table
@@ -179,10 +179,11 @@ lookup htable k = do
 type STMAction k v a = TVar [(k,v)] -> STM (Maybe a)
 
 -- | Used by 'insert', 'insertIfNotExists', 'delete', and 'update'.
+-- Searches the chain for the given key and then applies the `STMAction` to the contents of the chain. 
 genericModify :: (Eq k)
        => HashTable k v
-       -> k -- ^ key
-       -> STMAction k v a
+       -> k               -- ^ key
+       -> STMAction k v a -- ^ Action that will be performed if the key is found
        -> IO a
 genericModify htable k stmAction = do
     chain <- readChainForKeyIO htable k
