@@ -41,6 +41,7 @@ data Chain k v = Chain
     }
     deriving (Eq)
 
+-- | Create a new empty chain.
 newChainIO :: IO (Chain k v)
 newChainIO =
     Chain <$> newTVarIO []
@@ -48,7 +49,7 @@ newChainIO =
 
 -- | A thread-safe hash table that supports dynamic resizing.
 data HashTable k v = HashTable
-    { _chainsVecTV       :: TVar (Vector (Chain k v)) -- ^ vector of linked lists
+    { _chainsVecTV      :: TVar (Vector (Chain k v)) -- ^ vector of linked lists
     , _totalLoad        :: IORef Int -- ^ the current load of the hash table
     , _config           :: Config k  -- ^ the configuration options
     }
@@ -81,10 +82,10 @@ mkDefaultConfig = do
         }
 
 
--- | Creates a new hash table with an initial size. See 'newWithDefaults' for more details.
---   You probably either want to use 'newWithDefaults' instead or
---   something like this:
--- > mkDefaultConfig { _field = myValue } >>= new 10
+-- | Creates a new hash table with an initial size. See 'newWithDefaults' for more
+-- details. You probably want to use it the following way:
+-- > cfg <- mkDefaultConfig { _field = myValue }
+-- > htable <- new 10 cfg
 new :: (Eq k) => Int  -- ^ Initial size of the hash table
               -> Config k -> IO (HashTable k v)
 new size config = do
@@ -93,12 +94,16 @@ new size config = do
               <*> newIORef 0
               <*> return config
 
--- | Creates a new hash table with the given initial vector size, scale factor 2.0, a resizing load threshold of 0.75, and we use as many threads for resizing as we have cores available. This  will use a hash function with a (single) random salt, so if you need security, you MUST supply your own hash function. To be replaced by universal hashing in future versions.
+-- | Creates a new hash table with the given initial vector size, scale factor
+-- 2.0, a resizing load threshold of 0.75, and we use as many threads for resizing
+-- as we have cores available. This  will use a hash function with a (single)
+-- random salt. For security sensitive applications, you MUST supply your own hash
+-- function. (To be replaced by universal hashing in future versions.)
 newWithDefaults :: (Eq k,Hashable k) => Int -- ^ Initial size of the hash table
                 -> IO (HashTable k v)
 newWithDefaults size = mkDefaultConfig >>= new size
 
--- | Returns the size of the vector representing the hash table. (Atomic)
+-- | Returns the size of the vector representing the hash table.
 {-# INLINABLE readSizeIO #-}
 readSizeIO :: HashTable k v -> IO Int
 readSizeIO ht = do
@@ -110,7 +115,8 @@ readSize :: HashTable k v -> STM Int
 readSize ht = do
     V.length <$> readTVar (_chainsVecTV ht)
 
--- | Resizes the hash table by scaling it according to the _scaleFactor in the configuration.
+-- | Increases the size of the hash table by scaling the current size it according
+-- to the _scaleFactor in the configuration.
 resize :: (Eq k)
        => HashTable k v -> IO ()
 resize ht = do
@@ -129,7 +135,8 @@ resize ht = do
     unless alreadyResizing $ do
         let oldSize = V.length chainsVec
         let numWorkers = _numResizeWorkers $ _config ht
-        let numSlices = min numWorkers (oldSize `div` numWorkers)
+        let numSlices = min numWorkers
+                            (max 1 (oldSize `div` numWorkers))
         let sliceLength = oldSize `div` numSlices
         let restLength = oldSize - ((numSlices-1)*sliceLength)
         let vecSlices = [ V.unsafeSlice
@@ -166,25 +173,29 @@ resize ht = do
                       | (k,v) <- listOfNodes ]
 
 
--- | Lookup the value for the key in the hash table if it exists.
+-- | Lookup the value for the given key in the hash table.
 {-# INLINABLE lookup #-}
-lookup :: (Eq k) => HashTable k v -> k -> IO (Maybe v)
+lookup :: (Eq k)
+       => HashTable k v
+       -> k                 -- ^ key `k`
+       -> IO (Maybe v)      -- ^ value for key `k` if it exists
 lookup htable k = do
     chain <- readChainForKeyIO htable k
     list  <- readTVarIO (_itemsTV chain)
     return $ L.lookup k list
 
 
--- | An action to be executed atomically for the chain (list) stored at a specific table idnex. Used by 'genericModify'.
-type STMAction k v a = TVar [(k,v)] -> STM (Maybe a)
+-- | An action to be executed atomically for the content of the chain (i.e. list) stored at a specific table index. Used in 'genericModify'.
+type STMAction k v a = TVar [(k,v)] -> STM a
 
--- | Used by 'insert', 'insertIfNotExists', 'delete', and 'update'.
--- Searches the chain for the given key and then applies the `STMAction` to the contents of the chain. 
+-- | Used by various write-operations (e.g. 'insert', 'add', 'delete',  'update').
+-- Searches the hash table for the given key and then applies the given
+-- `STMAction` to the contents of the chain.
 genericModify :: (Eq k)
        => HashTable k v
        -> k               -- ^ key
-       -> STMAction k v a -- ^ Action that will be performed if the key is found
-       -> IO a
+       -> STMAction k v a -- ^ Action that will be performed for the list of items at the key's index
+       -> IO a            -- ^ Returns the result of the `STMAction`
 genericModify htable k stmAction = do
     chain <- readChainForKeyIO htable k
     result <- atomically $ do
@@ -193,107 +204,135 @@ genericModify htable k stmAction = do
             Ongoing    -> retry          -- block until resizing is done
             Finished   -> return Nothing -- resizing already done; try again
             NotStarted ->                -- no resizing happening at the moment
-                stmAction (_itemsTV chain)
+                Just <$> stmAction (_itemsTV chain)
     case result of
         Nothing -> genericModify htable k stmAction
         Just v  -> return v
 
--- | Inserts the key-value pair `k` `v` into the hash table. Uses chain hashing to resolve collisions. If you want to update the entry only if it already exists, use 'update'. If you want to update the entry only if it does *not* exist, use
--- 'insertIfNotExists'.
+
+-- | Inserts a key-value pair `k`,`v` into the hash table. Uses chain hashing to
+-- resolve collisions. If you want to update the entry only if it already exists,
+-- use 'update'. If you want to update the entry only if it does *not* exist, use
+-- 'add'.
 insert :: (Eq k)
        => HashTable k v
-       -> k -- ^ key
-       -> v -- ^ value
-       -> IO Bool
+       -> k -- ^ key `k`
+       -> v -- ^ value `v`
+       -> IO Bool -- ^ returns `True` if and only if the size of the hash table has changed
 insert htable k v = do
     result <- genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
                     Nothing -> do
                         writeTVar tvar ((k,v):list)
-                        return $ Just True
+                        return True
                     Just _  -> do -- entry was already there, so we overwrite it
                         -- Moves the most-recently modified item to the front:
                         writeTVar tvar ((k,v) : deleteFirstKey k list)
-                        return $ Just False
+                        return False
     when result $
         atomicallyChangeLoad htable 1
     return result
 
 
--- | Inserts a key and value pair into the hash table only if the key does not exist yet. Returns `True` if the insertion was successful, i.e., the hash table did not contain this key before. To get the same behaviour as 'Data.Map.insert', use 'insert'. If you want to update an entry only if it exists, use 'update'.
-insertIfNotExists :: (Eq k)
-       => HashTable k v
-       -> k -- ^ key
-       -> v -- ^ value
-       -> IO Bool
-insertIfNotExists htable k v = do
+-- | Adds a key and value pair into the hash table only if the key does not
+-- exist yet. Returns `True` if the insertion was successful, i.e., the hash table
+-- does not yet contain this key. To get the same behaviour as 'Data.Map.insert',
+-- use 'insert'. If you want to update an already-existing item, use 'update'.
+add :: (Eq k)
+    => HashTable k v
+    -> k -- ^ key
+    -> v -- ^ value
+    -> IO Bool -- ^ returns `True` if and only if the key was not yet in the table
+add htable k v = do
     result <- genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
                     Nothing -> do
                         writeTVar tvar ((k,v):list)
-                        return $ Just True
-                    Just _  -> return $ Just False
+                        return True
+                    Just _  -> return False
     when result $
         atomicallyChangeLoad htable 1
     return result
 
--- | Updates the value for key `k`. If `k` is not in the hash table, it skips the update and returns `False`.
+-- | Updates the value for key `k`. If `k` is not in the hash table, it skips the
+-- update and returns `False`.
 update :: (Eq k)
        => HashTable k v
        -> k -- ^ key
        -> v -- ^ value
-       -> IO Bool
+       -> IO Bool -- ^ returns `True` if and only if the key was found
 update htable k v =
     genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
                     Nothing -> do
-                        return $ Just False
+                        return False
                     Just _  -> do -- entry was already there, so we overwrite it
                         writeTVar tvar ((k,v) : deleteFirstKey k list)
-                        return $ Just True
+                        return True
 
 
--- | Applies an update-function to the value for key `k`. If `k` is not in the hash table, it just returns `False`.
+-- | Applies an update-function to the value for key `k`. Returns the old value if
+-- it exists. If `k` is not in the hash table, it returns `Nothing`.
 modify :: (Eq k)
        => HashTable k v
-       -> k        -- ^ key
-       -> (v -> v) -- ^ update-function
-       -> IO Bool
+       -> k            -- ^ key `k`
+       -> (v -> v)     -- ^ update-function
+       -> IO (Maybe v) -- ^ returns the old value for key `k` if it existed
 modify htable k f =
     genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
                     Nothing -> do
-                        return $ Just False
+                        return Nothing
                     Just v -> do -- entry was already there, so we overwrite it
                         writeTVar tvar ((k,f v) : deleteFirstKey k list)
-                        return $ Just True
+                        return $ Just v
 
--- | Deletes the entry for the given key from the hash table. Returns `True` if and only if an entry was deleted from the table.
+
+-- | Atomically replaces the value for the given key `k` in the hash table with
+-- the new value. Returns the old value. Throws 'AssertionFailed' if `k` is not in
+-- the hash table.
+swapValues :: (Eq k)
+       => HashTable k v
+       -> k        -- ^ key `k`
+       -> v        -- ^ new value
+       -> IO v     -- ^ old value
+swapValues htable k v = do
+    result <- modify htable k (const v)
+    case result of
+        Nothing -> throw $ AssertionFailed "Data.HashTable.swapValues: key not in hash table."
+        Just v' -> return v'
+
+
+-- | Deletes the entry for the given key from the hash table. Returns `True` if
+-- and only if an entry was deleted from the table.
 delete :: (Eq k)
        => HashTable k v
-       -> k -- ^ key of entry that will be deleted
-       -> IO Bool
+       -> k       -- ^ key of entry that will be deleted
+       -> IO Bool -- ^ returns `True` if and only if the size of the hash table
+                  -- has changed, i.e., an item was deleted
 delete htable k = do
     result <- genericModify htable k $ \tvar -> do
                 list <- readTVar tvar
                 case L.lookup k list of
                     Nothing ->
-                        return $ Just False
+                        return False
                     Just _  -> do
                         writeTVar tvar $ deleteFirstKey k list
-                        return $ Just True
+                        return True
     when result $
         atomicallyChangeLoad htable (-1)
     return result
 
--- | Atomically increment/decrement the table load value by adding the provided integer value to the current value.
+-- | Atomically increment/decrement the table load value by adding the provided
+-- integer offest to the current value. Forks a thread that executes 'resize' if
+-- the load passes the configured threshold.
 atomicallyChangeLoad :: (Eq k)
                      => HashTable k v
-                     -> Int -- ^ increment/decrement value
+                     -> Int -- ^ increment/decrement offset; can be negative
                      -> IO ()
 atomicallyChangeLoad htable incr = do
     totalLoad <- atomicModifyIORefCAS (_totalLoad htable) $
@@ -306,11 +345,14 @@ atomicallyChangeLoad htable incr = do
         when (migrationStatus == NotStarted) $
             void $ forkIO (resize htable)
 
--- | The load (i.e. number of stored items) in the table. Note that this is not synchronized for performance reasons and hence might be somewhat out of date if a lot of contention is happening.
+-- | The load (i.e. number of stored items) in the table. Note that this is not
+-- synchronized for performance reasons and hence might be somewhat out of date if
+-- a lot of contention is happening.
 readLoad :: HashTable k v -> IO Int
 readLoad htable = readIORef (_totalLoad htable)
 
--- | Atomically retrieves list of key-value pairs. If there is a lot of contention going on, this may be very inefficient.
+-- | Returns an atomic snapshot of the hash table as a list of key-value pairs. If
+-- there is a lot of contention going on, this may be very inefficient.
 readAssocs :: (Eq k)
             => HashTable k v -> STM [(k,v)]
 readAssocs htable = do
@@ -321,8 +363,20 @@ readAssocs htable = do
             readTVar (_itemsTV chain)
     msum <$> mapM getItemsForChain [0..len-1]
 
+-- | Returns the content of the hash table as a list of key-value pairs. This is *not* an atomic operation! If you need atomicity, use 'readAssoc' instead.
+readAssocsIO :: (Eq k)
+            => HashTable k v -> IO [(k,v)]
+readAssocsIO htable = do
+    chainsVec <- readTVarIO $ _chainsVecTV htable
+    let len = V.length chainsVec
+    let getItemsForChain k = do
+            chain <- readChainForIndexIO htable k
+            readTVarIO (_itemsTV chain)
+    msum <$> mapM getItemsForChain [0..len-1]
 
--- | Takes a key `k` and an assocation list `ys`, and deletes the first entry with key `k` in `ys`. Used internally.
+
+-- | Takes a key `k` and an assocation list `ys`, and deletes the first entry with
+-- key `k` in `ys`. Used internally.
 {-# INLINABLE deleteFirstKey #-}
 deleteFirstKey ::  Eq a => a -> [(a,b)] -> [(a,b)]
 deleteFirstKey _ []     = []

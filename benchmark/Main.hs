@@ -138,14 +138,15 @@ instance Dictionary (TVarHashMap Int) Int IO where
             let !mymap' = UO.delete k mymap in
             (UO.null mymap',mymap')
 
-instance Dictionary (H.HashTable Int Int) Int IO where
-    runRequest (Lookup k) s = do
+newtype TestHashTable a = TestHashTable (H.HashTable Int a)
+instance Dictionary (TestHashTable Int) Int IO where
+    runRequest (Lookup k) (TestHashTable s) = do
         r <- H.lookup s k
         case r of
             Nothing -> return False
             Just _  -> return True
-    runRequest (Insert k a) s = H.insert s k a
-    runRequest (Delete k) s = H.delete s k
+    runRequest (Insert k a) (TestHashTable s) = H.insert s k a
+    runRequest (Delete k) (TestHashTable s) = H.delete s k
 
 
 main = do
@@ -178,8 +179,8 @@ runBench numThreads numRequests range threshold = do
     let genTests = generateTests (numRequests `div` numThreads)
     let genTestsForThreads i = generateTests (numRequests `div` i)
 
-    let mkCHT :: IO (H.HashTable Int Int)
-        mkCHT = H.newWithDefaults 10
+    let mkCHT :: IO (TestHashTable Int)
+        mkCHT = TestHashTable <$> H.newWithDefaults 10
 
     let mkIOPrimOpsMap :: IO (IORefPrimOps Int)
         mkIOPrimOpsMap =

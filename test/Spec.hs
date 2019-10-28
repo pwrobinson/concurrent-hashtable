@@ -94,13 +94,14 @@ prop ioref chainTable = monadicIO $ do
     mymap <- run $ readIORef ioref
     -- test if all entries in the Hash Table are also in the Map:
     let res3 = [ isJust $ M.lookup (fst k) mymap | k <- list2 ]
+    -- run $ print =<< atomically (H.readAssocs chainTable)
     assert $ and resChain && res2 && and res3
 
 
 main :: IO ()
 main = do
     ioref <- newIORef (M.empty :: M.Map BoundedInt BoundedInt)
-    (ctable :: H.HashTable BoundedInt BoundedInt) <- H.newWithDefaults 10
+    (ctable :: H.HashTable BoundedInt BoundedInt) <- H.newWithDefaults 2
     writeFile "request_sequence.txt" ""
     quickCheckWith stdArgs{ maxSuccess = 50000 } $ prop ioref ctable
     print "------- Map ASSOCS List ----"

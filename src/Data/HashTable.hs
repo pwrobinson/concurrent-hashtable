@@ -24,8 +24,6 @@
 -- >> atomically $ readAssocs ht  -- convert to a key-value list
 -- > [(1,"hello"),(3,"!"),(2,"world")]
 --
--- List of atomic operations:
--- 'insert', 'insertIfNotExists', 'update', 'modify', 'lookup', 'delete', 'readAssocs', 'resize'
 --
 ----------------------------------------------------------------------
 
@@ -38,17 +36,23 @@ module Data.HashTable(
         newWithDefaults,
         mkDefaultConfig,
         Config(..),
-        -- * Atomic Operations
+        -- * Atomic Read-Operations
         lookup,
+        readAssocs,
+        -- * Non-Atomic Read-Operations
+        readAssocsIO,
+        -- * Atomic Write-Operations
         insert,
-        insertIfNotExists,
+        add,
         update,
         modify,
         delete,
+        swapValues,
         -- * Utilities
-        readAssocs,
         readSizeIO,
-        readSize
+        readSize,
+        readLoad,
+        resize
     )
 where
 import Data.HashTable.Internal

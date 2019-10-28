@@ -2,10 +2,14 @@
 
 ## Unreleased changes
 
-* Improved documentation.
-
 ## 0.1.8
 
+* Changed `insertIfExists` to `add`.
+* Added `swapValues`.
+* Added `readAssocsIO`.
+* Simplified `STMAction`.
+* Improved documentation.
+* Fixed bug in `resize` when initial table size is less than `_numResizeWorkers`.
 
 ## 0.1.7
 
