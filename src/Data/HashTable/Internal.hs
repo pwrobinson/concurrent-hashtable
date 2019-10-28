@@ -83,9 +83,7 @@ mkDefaultConfig = do
 
 
 -- | Creates a new hash table with an initial size. See 'newWithDefaults' for more
--- details. You probably want to use it the following way:
--- > cfg <- mkDefaultConfig { _field = myValue }
--- > htable <- new 10 cfg
+-- details. 
 new :: (Eq k) => Int  -- ^ Initial size of the hash table
               -> Config k -> IO (HashTable k v)
 new size config = do

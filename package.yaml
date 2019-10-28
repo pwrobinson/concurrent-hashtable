@@ -1,5 +1,5 @@
 name:                concurrent-hashtable
-version:             0.1.8
+version:             0.1.9
 github:              "pwrobinson/concurrent-hashtable"
 license:             BSD3
 author:              "Peter Robinson"
