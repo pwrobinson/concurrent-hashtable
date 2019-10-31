@@ -83,7 +83,7 @@ mkDefaultConfig = do
 
 
 -- | Creates a new hash table with an initial size. See 'newWithDefaults' for more
--- details. 
+-- details.
 new :: (Eq k) => Int  -- ^ Initial size of the hash table
               -> Config k -> IO (HashTable k v)
 new size config = do
