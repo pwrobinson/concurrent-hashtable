@@ -41,6 +41,7 @@ import System.Environment
 import Data.Atomics
 import Prelude hiding (lookup)
 
+import qualified Control.Concurrent.Map as Ctrie
 import qualified Data.HashTable as H
 import qualified Data.IntMap.Strict as M
 import qualified Data.HashMap.Strict as UO
@@ -148,6 +149,16 @@ instance Dictionary (TestHashTable Int) Int IO where
     runRequest (Insert k a) (TestHashTable s) = H.insert s k a
     runRequest (Delete k) (TestHashTable s) = H.delete s k
 
+newtype CtrieMap a = CtrieMap (Ctrie.Map Int a)
+instance Dictionary (CtrieMap Int) Int IO where
+    runRequest (Lookup k) (CtrieMap s) = do
+        r <- Ctrie.lookup k s
+        case r of
+            Nothing -> return False
+            Just _  -> return True
+    runRequest (Insert k a) (CtrieMap s) = Ctrie.insert k a s
+    runRequest (Delete k) (CtrieMap s) = Ctrie.delete k s
+
 
 main = do
     -- use environment variables until we figure out how to avoid interfering with criterions cmdargs handling...
@@ -204,6 +215,9 @@ runBench numThreads numRequests range threshold = do
 
     let mkSTMMap :: IO (STMContainersMap Int)
         mkSTMMap = STMContainersMap <$> SM.newIO
+
+    let mkCtrieMap :: IO (CtrieMap Int)
+        mkCtrieMap = CtrieMap <$> Ctrie.empty
 
     numProcs <- getNumCapabilities
     print ("number of available cores: ",numProcs)
@@ -290,6 +304,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_0_50_50)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_0_50_50)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_0_50_50)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_0_50_50)
             ]
         , bgroup "20% Lookups; 40% Inserts; 40% Deletes"
             [
@@ -300,6 +315,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_20_40_40)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_20_40_40)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_20_40_40)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_20_40_40)
             ]
         , bgroup "40% Lookups; 30% Inserts; 30% Deletes"
             [
@@ -310,6 +326,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_40_30_30)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_40_30_30)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_40_30_30)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_40_30_30)
             ]
         , bgroup "50% Lookups; 25% Inserts; 25% Deletes"
             [
@@ -320,6 +337,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_50_25_25)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_50_25_25)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_50_25_25)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_50_25_25)
             ]
         ,  bgroup "60% Lookups; 20% Inserts; 20% Deletes"
             [
@@ -330,6 +348,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_60_20_20)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_60_20_20)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_60_20_20)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_60_20_20)
             ]
          , bgroup "70% Lookups; 15% Inserts; 15% Deletes"
             [
@@ -340,6 +359,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_70_15_15)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_70_15_15)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_70_15_15)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_70_15_15)
             ]
         , bgroup "80% Lookups; 10% Inserts; 10% Deletes"
             [
@@ -350,6 +370,7 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_80_10_10)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_80_10_10)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_80_10_10)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_80_10_10)
             ]
         , bgroup "90% Lookups; 5% Inserts; 5% Deletes"
             [
@@ -360,5 +381,6 @@ runBench numThreads numRequests range threshold = do
             , bench "MVar HashMap" $ nfIO (mkMVarMap >>= evaluate tests_90_5_5)
             , bench "StmContainers.Map" $ nfIO (mkSTMMap >>= evaluate tests_90_5_5)
             , bench "Concurrent HashTable" $ nfIO (mkCHT >>= evaluate tests_90_5_5)
+            , bench "Ctrie" $ nfIO (mkCtrieMap >>= evaluate tests_90_5_5)
             ]
         ]
