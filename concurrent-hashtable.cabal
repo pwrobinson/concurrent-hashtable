@@ -4,7 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
+<<<<<<< HEAD
 -- hash: eac965f03bce19d69638c6be91699b53234eb20f717ee24499358947034e5814
+=======
+-- hash: 2f1effdb98db175cd144672aa00e90947cc8e3342ca2d7fa8d90d0dd7f1c6603
+>>>>>>> 1ecd3764a895fca6eb8ca7fee429a9cdfe3faa6a
 
 name:           concurrent-hashtable
 version:        0.1.9
@@ -82,6 +86,7 @@ benchmark mainbench
     , concurrent-hashtable
     , containers >=0.6.0.1 && <1
     , criterion >=1.5.6.0 && <2
+    , ctrie
     , dictionary-type
     , hashable >=1.2.7.0 && <2
     , random >=1.1 && <2
